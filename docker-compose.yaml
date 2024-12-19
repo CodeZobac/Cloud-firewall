@@ -1,0 +1,65 @@
+services:
+  firewall:
+    image: ubuntu:latest
+    volumes:
+      - ./firewall:/firewall
+    container_name: firewall_container
+    networks:
+      firewall_net:
+        ipv4_address: 172.16.0.2
+    environment:
+      - DEBIAN_FRONTEND=noninteractive
+      - TZ=Etc/UTC
+    command: >
+      bash -c "
+      ln -fs /usr/share/zoneinfo/\$TZ /etc/localtime &&
+      apt update &&
+      apt install -y tzdata python3 python3-pip python3-venv openssh-server libpcap-dev libpcap0.8 tcpdump &&
+      service ssh start &&
+      python3 -m venv /firewall/venv &&
+      source /firewall/venv/bin/activate &&
+      pip install poetry &&
+      cd firewall &&
+      poetry install --no-root &&
+      poetry run python firewall.py &&
+      tail -f /dev/null
+      "
+    tty: true
+    stdin_open: true
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+
+  attacker:
+    image: ubuntu:latest
+    container_name: attacker_container
+    networks:
+      attacker_net:
+        ipv4_address: 172.20.0.2
+    command: >
+      bash -c "
+      apt update &&
+      apt install -y nmap openssh-client netcat-openbsd &&
+      until nc -zv 172.16.0.2 22; do
+        echo 'Waiting for firewall to be ready...'
+        sleep 5
+      done &&
+      nmap 172.16.0.2 &&
+      tail -f /dev/null
+      "
+    depends_on:
+      - firewall
+    tty: true
+    stdin_open: true
+
+networks:
+  firewall_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.0.0/16
+  attacker_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
