@@ -12,7 +12,7 @@ Cloud-firewall is a custom firewall solution that protects your VPS from unautho
 
 1. **Clone the Repository**
     ```bash
-    git clone https://github.com/yourusername/Cloud-firewall.git
+    git clone https://github.com/CodeZobac/Cloud-firewall.git
     cd Cloud-firewall
     ```
 
